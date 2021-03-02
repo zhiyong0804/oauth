@@ -14,6 +14,7 @@ pub fn dummy_client() {
         let config = ClientConfig {
             client_id: "LocalClient".into(),
             client_secret: Option::from("test".to_string()),
+            // client_secret: None,
             protected_url: "http://localhost:8020/".into(),
             token_url: "http://localhost:8020/token".into(),
             refresh_url: "http://localhost:8020/refresh".into(),
@@ -34,6 +35,7 @@ pub fn dummy_client() {
 fn endpoint_impl(
     (query, state): (web::Query<HashMap<String, String>>, web::Data<Client>),
 ) -> HttpResponse {
+    debug!("/endpoint_impl {:?}", query);
     if let Some(cause) = query.get("error") {
         return HttpResponse::BadRequest()
             .body(format!("Error during owner authorization: {:?}", cause));
@@ -44,17 +46,25 @@ fn endpoint_impl(
         Some(code) => code.clone(),
     };
 
-    match state.authorize(&code) {
+    let res = match state.authorize(&code) {
         Ok(()) => HttpResponse::Found().header("Location", "/").finish(),
         Err(err) => HttpResponse::InternalServerError().body(format!("{}", err)),
-    }
+    };
+
+    debug!("/endpoint_impl {:?}\n\n", res);
+
+    res
 }
 
 fn refresh(state: web::Data<Client>) -> HttpResponse {
-    match state.refresh() {
+    debug!("/refresh ");
+
+    let res = match state.refresh() {
         Ok(()) => HttpResponse::Found().header("Location", "/").finish(),
         Err(err) => HttpResponse::InternalServerError().body(format!("{}", err)),
-    }
+    };
+    debug!("/refresh {:?}\n\n", res);
+    res
 }
 
 fn get_with_token(state: web::Data<Client>) -> HttpResponse {

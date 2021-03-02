@@ -17,16 +17,20 @@ serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0"
 rust-argon2 = "0.8.2"
-r2d2 = {version ="0.8", optional = true }
-r2d2_redis = {version = "0.13", optional = true }
 url = "2"
 anyhow = "1.0"
 tokio = { version = "0.2", features = ["full"] }
 reqwest = "^0.9"
-log = "0.4.8"
+log = "0.4"
 log4rs = "0.10.0"
+redis = { version = "0.20", optional = true, features = ["r2d2", "cluster", "connection-manager", "tokio-comp"] }
+cdrs = { version = "2", optional = true }
+cdrs_helpers_derive = { version = "0.4", optional = true }
 
 
 [features]
-default = ["with-redis"]
-with-redis = ["r2d2", "r2d2_redis"]
+default = ["with-redis-scylla"]
+with-redis = ["redis"]
+with-redis-cluster = ["redis"]
+with-scylla = ["cdrs", "cdrs_helpers_derive"]
+with-redis-scylla = ["redis", "cdrs", "cdrs_helpers_derive"]

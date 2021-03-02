@@ -7,7 +7,6 @@ use oxide_auth::primitives::registrar::{
 };
 use oxide_auth::primitives::prelude::{ClientUrl, PreGrant, Scope};
 use crate::db_service::DataSource;
-use r2d2_redis::redis::RedisError;
 
 /// A database client service which implemented Registrar.
 /// db: repository service to query stored clients or regist new client.
@@ -35,12 +34,11 @@ static DEFAULT_PASSWORD_POLICY: Lazy<Argon2> = Lazy::new(|| Argon2::default());
 
 impl DBRegistrar {
     /// Create an DB connection recording to features.
-    pub fn new(url: String, max_pool_size: u32, client_prefix: String) -> Result<Self, RedisError> {
-        let repo = DataSource::new(url, max_pool_size, client_prefix)?;
-        Ok(DBRegistrar {
+    pub fn new(repo: DataSource) -> Self {
+        DBRegistrar {
             repo,
             password_policy: None,
-        })
+        }
     }
 
     /// Insert or update the client record.
@@ -82,7 +80,9 @@ impl Registrar for DBRegistrar {
     fn bound_redirect<'a>(&self, bound: ClientUrl<'a>) -> Result<BoundClient<'a>, RegistrarError> {
         let client = match self.repo.find_client_by_id(bound.client_id.as_ref()) {
             Ok(detail) => detail,
-            _ => return Err(RegistrarError::Unspecified),
+            Err(err) => {
+                error!("{}", err.to_string());
+                return Err(RegistrarError::Unspecified); },
         };
         // Perform exact matching as motivated in the rfc
         let registered_url = match bound.redirect_uri {
@@ -121,14 +121,20 @@ impl Registrar for DBRegistrar {
     }
 
     fn check(&self, client_id: &str, passphrase: Option<&[u8]>) -> Result<(), RegistrarError> {
+        panic!("haha");
         let password_policy = Self::current_policy(&self.password_policy);
 
         let client = self
             .repo
             .find_client_by_id(client_id)
-            .map_err(|_e| RegistrarError::Unspecified);
+            .map_err(|_e| {
+                error!("{}", _e.to_string());
+                RegistrarError::Unspecified });
         client.and_then(|op_client| {
             RegisteredClient::new(&op_client, password_policy).check_authentication(passphrase)
+        }).map_err(|err|{
+            error!("client_id={}, passphrase={}, err={:?}", client_id, String::from_utf8_lossy(passphrase.unwrap_or_default()), err);
+            err
         })?;
         Ok(())
     }
@@ -186,12 +192,8 @@ mod tests {
         let default_scope = "default-scope".parse().unwrap();
         let client = Client::public(client_id, redirect_uri, default_scope)
             .with_additional_redirect_uris(additional_redirect_uris);
-        let mut db_registrar = DBRegistrar::new(
-            "redis://localhost/3".parse().unwrap(),
-            32,
-            "client:".parse().unwrap(),
-        )
-        .unwrap();
+        let repo = DataSource::new("redis://localhost/3".parse().unwrap(),  "client:".to_string()).unwrap();
+        let mut db_registrar = DBRegistrar::new(repo);
         db_registrar.register_client(client);
 
         assert_eq!(
@@ -230,12 +232,8 @@ mod tests {
 
     #[test]
     fn client_service() {
-        let mut oauth_service = DBRegistrar::new(
-            "redis://localhost/3".parse().unwrap(),
-            32,
-            "client:".parse().unwrap(),
-        )
-        .unwrap();
+        let repo = DataSource::new("redis://localhost/3".parse().unwrap(),  "client:".to_string()).unwrap();
+        let mut oauth_service = DBRegistrar::new(repo);
         let public_id = "PrivateClientId";
         let client_url = "https://example.com";
 

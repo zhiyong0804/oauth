@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate log;
+
 mod support;
 
 use actix::{Actor, Addr, Context, Handler};
@@ -12,12 +15,15 @@ use oxide_auth_actix::{
     Authorize, OAuthMessage, OAuthOperation, OAuthRequest, OAuthResource, OAuthResponse, Refresh,
     Resource, Token, WebError,
 };
-use std::{thread, env};
 use oxide_auth_db::primitives::db_registrar::DBRegistrar;
+use oxide_auth_db::db_service::DataSource;
+
+use std::{thread, env};
+use std::io::Write;
 
 static DENY_TEXT: &str = "<html>
 This page should be accessed via an oauth token from the client in the example. Click
-<a href=\"http://localhost:8020/authorize?response_type=code&client_id=LocalClient&client_secret=test\">
+<a href=\"http://localhost:8020/authorize?response_type=code&client_id=LocalClient\">
 here</a> to begin the authorization process.
 </html>
 ";
@@ -42,44 +48,76 @@ enum Extras {
 async fn get_authorize(
     (req, state): (OAuthRequest, web::Data<Addr<State>>),
 ) -> Result<OAuthResponse, WebError> {
+    debug!("/get_authorize {:?}", req);
     // GET requests should not mutate server state and are extremely
     // vulnerable accidental repetition as well as Cross-Site Request
     // Forgery (CSRF).
-    state.send(Authorize(req).wrap(Extras::AuthGet)).await?
+    let response = state.send(Authorize(req).wrap(Extras::AuthGet)).await.map_err(|err|{
+        error!("get_authorize {:?}", err);
+        err
+    }).unwrap();
+
+    debug!("/get_authorize {:?}\n\n", response);
+
+    response
 }
 
 async fn post_authorize(
     (r, req, state): (HttpRequest, OAuthRequest, web::Data<Addr<State>>),
 ) -> Result<OAuthResponse, WebError> {
+    debug!("/post_authorize {:?} {:?}", r, req);
     // Some authentication should be performed here in production cases
-    state
+    let res = state
         .send(Authorize(req).wrap(Extras::AuthPost(r.query_string().to_owned())))
-        .await?
+        .await.map_err(|err|{
+        error!("post_authorize {:?}", err);
+        err
+    })?;
+    debug!("/post_authorize {:?}\n\n", res);
+    res
 }
 
 async fn token((req, state): (OAuthRequest, web::Data<Addr<State>>)) -> Result<OAuthResponse, WebError> {
-    state.send(Token(req).wrap(Extras::Nothing)).await?
+    debug!("/token {:?}", req);
+    let r = Token(req).wrap(Extras::Nothing);
+    let res = state.send(r).await.map_err(|err|{
+        error!("token err = {:?}", err);
+        err
+    })?;
+    debug!("/token res = {:?}\n\n", res);
+    res
 }
 
 async fn refresh(
     (req, state): (OAuthRequest, web::Data<Addr<State>>),
 ) -> Result<OAuthResponse, WebError> {
-    state.send(Refresh(req).wrap(Extras::Nothing)).await?
+    debug!("/refresh {:?}", req);
+    let res = state.send(Refresh(req).wrap(Extras::Nothing)).await.map_err(|err|{
+        error!("refresh {:?}", err);
+        err
+    })?;
+    debug!("/refresh {:?}\n\n", res);
+    res
 }
 
 async fn index(
     (req, state): (OAuthResource, web::Data<Addr<State>>),
 ) -> Result<OAuthResponse, WebError> {
-    match state
+    let res = match state
         .send(Resource(req.into_request()).wrap(Extras::Nothing))
-        .await?
+        .await.map_err(|err|{
+        error!("index {:?}", err);
+        err
+    })?
     {
         Ok(_grant) => Ok(OAuthResponse::ok()
             .content_type("text/plain")?
             .body("Hello world!")),
         Err(Ok(e)) => Ok(e.body(DENY_TEXT)),
         Err(Err(e)) => Err(e),
-    }
+    };
+    debug!("/index {:?}\n\n", res);
+    res
 }
 
 async fn start_browser() -> () {
@@ -88,19 +126,18 @@ async fn start_browser() -> () {
 
 /// Example of a main function of an actix-web server supporting oauth.
 pub fn main() {
-    std::env::set_var(
-        "RUST_LOG",
-        "actix_example=info,actix_web=info,actix_http=info,actix_service=info",
-    );
-    std::env::set_var("REDIS_URL", "redis://localhost/3");
+    env_logger::Builder::new().format(|buf, record| {
+        writeln!(buf, "[{}] {}:{} {}", record.level(),record.module_path().unwrap_or_default(), record.line().unwrap_or(0), record.args())
+    }).parse_filters("debug").init();
+
+    std::env::set_var("REDIS_URL", "redis://129.204.249.76:30379/0");
     std::env::set_var("MAX_POOL_SIZE", "32");
 
     std::env::set_var("CLIENT_PREFIX", "client:");
 
-    env_logger::init();
+
 
     let redis_url = env::var("REDIS_URL").expect("REDIS_URL should be set");
-    let max_pool_size = env::var("MAX_POOL_SIZE").unwrap_or("32".parse().unwrap());
     let client_prefix = env::var("CLIENT_PREFIX").unwrap_or("client:".parse().unwrap());
 
     let mut sys = actix_rt::System::new("HttpServerClient");
@@ -108,9 +145,13 @@ pub fn main() {
     // Start, then open in browser, don't care about this finishing.
     let _ = sys.block_on(start_browser());
 
+    // let repo = DataSource::new(redis_url,  client_prefix).unwrap();
+    // let repo = DataSource::new(vec!["redis://49.234.147.154:7001".to_string(),"redis://49.234.137.250:7001".to_string(),"redis://49.234.132.121:7001".to_string()], Some("idreamsky@123".to_string()),  client_prefix).unwrap();
+    // let repo = DataSource::new(vec!["106.52.187.25:9042"],  "cassandra", "Brysj@1gsycl", "xapi", "apps").unwrap();
+    let repo = DataSource::new(&redis_url, &client_prefix, vec!["106.52.187.25:9042"],  "cassandra", "Brysj@1gsycl", "xapi", "apps").unwrap();
+
     let oauth_db_service =
-        DBRegistrar::new(redis_url, max_pool_size.parse::<u32>().unwrap(), client_prefix)
-            .expect("Invalid URL to build DBRegistrar");
+        DBRegistrar::new(repo);
 
     let state = State::preconf_db_registrar(oauth_db_service).start();
 
@@ -170,6 +211,7 @@ impl State {
     where
         S: OwnerSolicitor<OAuthRequest> + 'static,
     {
+        debug!("with_solicitor");
         ErrorInto::new(Generic {
             authorizer: &mut self.endpoint.authorizer,
             registrar: &mut self.endpoint.registrar,
@@ -192,6 +234,7 @@ where
     type Result = Result<Op::Item, Op::Error>;
 
     fn handle(&mut self, msg: OAuthMessage<Op, Extras>, _: &mut Self::Context) -> Self::Result {
+        debug!("State handle OAuthMessage");
         let (op, ex) = msg.into_inner();
 
         match ex {
