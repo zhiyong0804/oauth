@@ -57,7 +57,7 @@ async fn get_authorize(
     // GET requests should not mutate server state and are extremely
     // vulnerable accidental repetition as well as Cross-Site Request
     // Forgery (CSRF).
-    let response = state.send(Authorize(req).wrap(Extras::AuthGet)).await.map_err(|err|{
+    let response = state.send(Authorize(req).wrap(Extras::AuthGet)).await.map_err(|err| {
         error!("get_authorize {:?}", err);
         err
     }).unwrap();
@@ -74,7 +74,7 @@ async fn post_authorize(
     // Some authentication should be performed here in production cases
     let res = state
         .send(Authorize(req).wrap(Extras::AuthPost(r.query_string().to_owned())))
-        .await.map_err(|err|{
+        .await.map_err(|err| {
         error!("post_authorize {:?}", err);
         err
     })?;
@@ -85,7 +85,7 @@ async fn post_authorize(
 async fn token((req, state): (OAuthRequest, web::Data<Addr<State>>)) -> Result<OAuthResponse, WebError> {
     debug!("/token {:?}", req);
     let r = Token(req).wrap(Extras::Nothing);
-    let res = state.send(r).await.map_err(|err|{
+    let res = state.send(r).await.map_err(|err| {
         error!("token err = {:?}", err);
         err
     })?;
@@ -97,7 +97,7 @@ async fn refresh(
     (req, state): (OAuthRequest, web::Data<Addr<State>>),
 ) -> Result<OAuthResponse, WebError> {
     debug!("/refresh {:?}", req);
-    let res = state.send(Refresh(req).wrap(Extras::Nothing)).await.map_err(|err|{
+    let res = state.send(Refresh(req).wrap(Extras::Nothing)).await.map_err(|err| {
         error!("refresh {:?}", err);
         err
     })?;
@@ -110,7 +110,7 @@ async fn index(
 ) -> Result<OAuthResponse, WebError> {
     let res = match state
         .send(Resource(req.into_request()).wrap(Extras::Nothing))
-        .await.map_err(|err|{
+        .await.map_err(|err| {
         error!("index {:?}", err);
         err
     })?
@@ -119,7 +119,7 @@ async fn index(
             Ok(OAuthResponse::ok()
                 .content_type("text/plain")?
                 .body("Hello world!"))
-        },
+        }
         Err(Ok(e)) => Ok(e.body(DENY_TEXT)),
         Err(Err(e)) => Err(e),
     };
@@ -134,14 +134,13 @@ async fn start_browser() -> () {
 /// Example of a main function of an actix-web server supporting oauth.
 pub fn main() {
     env_logger::Builder::new().format(|buf, record| {
-        writeln!(buf, "[{}] {}:{} {}", record.level(),record.module_path().unwrap_or_default(), record.line().unwrap_or(0), record.args())
+        writeln!(buf, "[{}] {}:{} {}", record.level(), record.module_path().unwrap_or_default(), record.line().unwrap_or(0), record.args())
     }).parse_filters("debug,tokio_reactor=info,hyper=info").init();
 
     std::env::set_var("REDIS_URL", "redis://129.204.249.76:30379/0");
     std::env::set_var("MAX_POOL_SIZE", "32");
 
     std::env::set_var("CLIENT_PREFIX", "client:");
-
 
 
     let redis_url = env::var("REDIS_URL").expect("REDIS_URL should be set");
@@ -155,7 +154,8 @@ pub fn main() {
     // let repo = DataSource::new(redis_url,  client_prefix).unwrap();
     // let repo = DataSource::new(vec!["redis://49.234.147.154:7001".to_string(),"redis://49.234.137.250:7001".to_string(),"redis://49.234.132.121:7001".to_string()], Some("idreamsky@123".to_string()),  client_prefix).unwrap();
     // let repo = DataSource::new(vec!["106.52.187.25:9042"],  "cassandra", "Brysj@1gsycl", "xapi", "apps").unwrap();
-    let repo = DataSource::new(&redis_url, &client_prefix, vec!["106.52.187.25:9042"],  "cassandra", "Brysj@1gsycl", "xapi", "apps").unwrap();
+    // let repo = DataSource::new(&redis_url, &client_prefix, vec!["106.52.187.25:9042"],  "cassandra", "Brysj@1gsycl", "xapi", "apps").unwrap();
+    let repo = DataSource::new(vec!["redis://49.234.147.154:7001"], &client_prefix, Some(""), vec!["106.52.187.25:9042"], "cassandra", "Brysj@1gsycl", "xapi", "apps").unwrap();
 
     let oauth_db_service =
         DBRegistrar::new(repo);
@@ -176,9 +176,9 @@ pub fn main() {
             .route("/refresh", web::post().to(refresh))
             .route("/", web::get().to(index))
     })
-    .bind("localhost:8020")
-    .expect("Failed to bind to socket")
-    .run();
+        .bind("localhost:8020")
+        .expect("Failed to bind to socket")
+        .run();
 
     support::dummy_client();
     // Run the rest of the system.
@@ -214,9 +214,9 @@ impl State {
 
     pub fn with_solicitor<'a, S>(
         &'a mut self, solicitor: S,
-    ) -> impl Endpoint<OAuthRequest, Error = WebError> + 'a
-    where
-        S: OwnerSolicitor<OAuthRequest> + 'static,
+    ) -> impl Endpoint<OAuthRequest, Error=WebError> + 'a
+        where
+            S: OwnerSolicitor<OAuthRequest> + 'static,
     {
         debug!("with_solicitor");
         ErrorInto::new(Generic {
@@ -235,8 +235,8 @@ impl Actor for State {
 }
 
 impl<Op> Handler<OAuthMessage<Op, Extras>> for State
-where
-    Op: OAuthOperation,
+    where
+        Op: OAuthOperation,
 {
     type Result = Result<Op::Item, Op::Error>;
 
@@ -277,7 +277,7 @@ where
 
 
 #[tokio::test]
-async fn test_refresh(){
+async fn test_refresh() {
     let refresh_token = "aoSBc8n1J97TFBSuDmFSxQ==";
     let mut headers = HashMap::new();
     // headers.insert("authorization".to_string(), format!("Basic {}", access_token));
@@ -285,14 +285,13 @@ async fn test_refresh(){
     #[derive(Serialize)]
     struct Request {
         grant_type: String,
-        refresh_token: String
+        refresh_token: String,
     }
-    let body = Request{grant_type: "refresh_token".to_string(), refresh_token: refresh_token.to_string()};
+    let body = Request { grant_type: "refresh_token".to_string(), refresh_token: refresh_token.to_string() };
     let body = serde_json::to_string(&body).unwrap();
     let res = post_json_timeout("http://127.0.0.1:8020",
-                                &format!("/refresh?grant_type=refresh_token&refresh_token={}", refresh_token), "", Some(headers),20 ).await.unwrap_or_default();
+                                &format!("/refresh?grant_type=refresh_token&refresh_token={}", refresh_token), "", Some(headers), 20).await.unwrap_or_default();
     println!("{}", res);
-
 }
 
 pub async fn post_json_timeout(host: &str, path: &str, content: &str, headers: Option<HashMap<String, String>>, timeout: u64) -> anyhow::Result<String> {

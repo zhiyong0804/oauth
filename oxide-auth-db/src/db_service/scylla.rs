@@ -18,14 +18,14 @@ use std::borrow::Borrow;
 type CurrentSession = Session<RoundRobin<TcpConnectionPool<StaticPasswordAuthenticator>>>;
 
 
-pub struct ScyllaDataSource {
+pub struct DBDataSource {
     session: CurrentSession,
     db_name: String,
     table_name: String,
 }
 
 
-impl ScyllaDataSource {
+impl DBDataSource {
     pub fn new(nodes: Vec<&str>, username: &str, password: &str, db_name: &str, table_name: &str) -> anyhow::Result<Self> {
         let auth = StaticPasswordAuthenticator::new(username, password);
         let mut configs = vec![];
@@ -36,7 +36,7 @@ impl ScyllaDataSource {
         }
         let session = new_session(&ClusterTcpConfig(configs), RoundRobin::new())?;
 
-        Ok(ScyllaDataSource {
+        Ok(DBDataSource {
             session,
             db_name: db_name.to_string(),
             table_name: table_name.to_string(),
@@ -50,7 +50,7 @@ impl ScyllaDataSource {
 }
 
 
-impl OauthClientDBRepository for ScyllaDataSource {
+impl OauthClientDBRepository for DBDataSource {
     fn list(&self) -> anyhow::Result<Vec<EncodedClient>> {
         Err(anyhow::Error::msg("TODO"))
     }

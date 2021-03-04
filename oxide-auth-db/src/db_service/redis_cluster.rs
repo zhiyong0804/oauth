@@ -12,7 +12,7 @@ use std::time::Duration;
 
 /// redis datasource to Client entries.
 #[derive(Clone)]
-pub struct RedisClusterDataSource {
+pub struct DBDataSource {
     client: Client,
     client_prefix: String,
 }
@@ -92,21 +92,21 @@ impl StringfiedEncodedClient {
     }
 }
 
-impl RedisClusterDataSource {
+impl DBDataSource {
     pub fn new(nodes: Vec<String>, password: Option<String>, client_prefix: String) -> Result<Self, RedisError> {
         let mut builder = ClusterClientBuilder::new(nodes);
         if password.is_some() {
             builder = builder.password(password.unwrap_or_default());
         }
         let client = builder.open()?;
-        Ok(RedisClusterDataSource {
+        Ok(DBDataSource {
             client,
             client_prefix,
         })
     }
 }
 
-impl RedisClusterDataSource {
+impl DBDataSource {
     /// users can regist to redis a custom client struct which can be Serialized and Deserialized.
     pub fn regist(&self, detail: &StringfiedEncodedClient) -> anyhow::Result<()> {
         let mut connect = self.client.get_connection()?;
@@ -116,7 +116,7 @@ impl RedisClusterDataSource {
     }
 }
 
-impl OauthClientDBRepository for RedisClusterDataSource {
+impl OauthClientDBRepository for DBDataSource {
     fn list(&self) -> anyhow::Result<Vec<EncodedClient>> {
         debug!("list");
         let mut encoded_clients: Vec<EncodedClient> = vec![];

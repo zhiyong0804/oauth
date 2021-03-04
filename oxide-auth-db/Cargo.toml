@@ -29,8 +29,9 @@ cdrs_helpers_derive = { version = "0.4", optional = true }
 
 
 [features]
-default = ["with-redis-scylla"]
+default = ["with-redis-scylla-cluster"]
 with-redis = ["redis"]
 with-redis-cluster = ["redis"]
 with-scylla = ["cdrs", "cdrs_helpers_derive"]
 with-redis-scylla = ["redis", "cdrs", "cdrs_helpers_derive"]
+with-redis-scylla-cluster = ["redis", "cdrs", "cdrs_helpers_derive"]
