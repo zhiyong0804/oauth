@@ -1,5 +1,7 @@
 #[macro_use]
 extern crate log;
+#[macro_use]
+extern crate serde_derive;
 
 mod support;
 
@@ -11,6 +13,7 @@ use oxide_auth::{
     frontends::simple::endpoint::{ErrorInto, FnSolicitor, Generic, Vacant},
     primitives::prelude::{AuthMap, RandomGenerator, Scope, TokenMap},
 };
+
 use oxide_auth_actix::{
     Authorize, OAuthMessage, OAuthOperation, OAuthRequest, OAuthResource, OAuthResponse, Refresh,
     Resource, Token, WebError,
@@ -20,10 +23,12 @@ use oxide_auth_db::db_service::DataSource;
 
 use std::{thread, env};
 use std::io::Write;
+use std::collections::hash_map::HashMap;
+use std::time::Duration;
 
 static DENY_TEXT: &str = "<html>
 This page should be accessed via an oauth token from the client in the example. Click
-<a href=\"http://localhost:8020/authorize?response_type=code&client_id=LocalClient\">
+<a href=\"http://localhost:8020/authorize?response_type=code&client_id=LocalClient&state=12345\">
 here</a> to begin the authorization process.
 </html>
 ";
@@ -110,9 +115,11 @@ async fn index(
         err
     })?
     {
-        Ok(_grant) => Ok(OAuthResponse::ok()
-            .content_type("text/plain")?
-            .body("Hello world!")),
+        Ok(_grant) => {
+            Ok(OAuthResponse::ok()
+                .content_type("text/plain")?
+                .body("Hello world!"))
+        },
         Err(Ok(e)) => Ok(e.body(DENY_TEXT)),
         Err(Err(e)) => Err(e),
     };
@@ -128,7 +135,7 @@ async fn start_browser() -> () {
 pub fn main() {
     env_logger::Builder::new().format(|buf, record| {
         writeln!(buf, "[{}] {}:{} {}", record.level(),record.module_path().unwrap_or_default(), record.line().unwrap_or(0), record.args())
-    }).parse_filters("debug").init();
+    }).parse_filters("debug,tokio_reactor=info,hyper=info").init();
 
     std::env::set_var("REDIS_URL", "redis://129.204.249.76:30379/0");
     std::env::set_var("MAX_POOL_SIZE", "32");
@@ -266,4 +273,48 @@ where
             _ => op.run(&mut self.endpoint),
         }
     }
+}
+
+
+#[tokio::test]
+async fn test_refresh(){
+    let refresh_token = "aoSBc8n1J97TFBSuDmFSxQ==";
+    let mut headers = HashMap::new();
+    // headers.insert("authorization".to_string(), format!("Basic {}", access_token));
+
+    #[derive(Serialize)]
+    struct Request {
+        grant_type: String,
+        refresh_token: String
+    }
+    let body = Request{grant_type: "refresh_token".to_string(), refresh_token: refresh_token.to_string()};
+    let body = serde_json::to_string(&body).unwrap();
+    let res = post_json_timeout("http://127.0.0.1:8020",
+                                &format!("/refresh?grant_type=refresh_token&refresh_token={}", refresh_token), "", Some(headers),20 ).await.unwrap_or_default();
+    println!("{}", res);
+
+}
+
+pub async fn post_json_timeout(host: &str, path: &str, content: &str, headers: Option<HashMap<String, String>>, timeout: u64) -> anyhow::Result<String> {
+    let req_url = format!("{}{}", host, path);
+
+    let cli = reqwest::Client::builder().danger_accept_invalid_certs(true)
+        .timeout(Duration::from_secs(timeout)).build().unwrap();
+
+    let mut req = cli.post(&req_url).header("Content-Type", "application/json");
+    // let mut req = cli.post(&req_url).header("Content-Type", "text/plain");
+    if let Some(h) = headers {
+        for (k, v) in &h {
+            req = req.header(k, v);
+        }
+    }
+
+    let req_builder = req.body(content.to_string());
+    // println!("edwin 52 {:?}", req_builder);
+    let mut res = req_builder.send().unwrap();
+    let body = res.text().unwrap();
+
+    // println!("edwin 56 {}", body);
+
+    Ok(body)
 }

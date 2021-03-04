@@ -121,7 +121,6 @@ impl Registrar for DBRegistrar {
     }
 
     fn check(&self, client_id: &str, passphrase: Option<&[u8]>) -> Result<(), RegistrarError> {
-        panic!("haha");
         let password_policy = Self::current_policy(&self.password_policy);
 
         let client = self

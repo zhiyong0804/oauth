@@ -48,7 +48,9 @@ fn endpoint_impl(
 
     let res = match state.authorize(&code) {
         Ok(()) => HttpResponse::Found().header("Location", "/").finish(),
-        Err(err) => HttpResponse::InternalServerError().body(format!("{}", err)),
+        Err(err) => {
+            error!("{}", err.to_string());
+            HttpResponse::InternalServerError().body(format!("{}", err)) },
     };
 
     debug!("/endpoint_impl {:?}\n\n", res);
@@ -89,3 +91,5 @@ fn get_with_token(state: web::Data<Client>) -> HttpResponse {
 
     HttpResponse::Ok().content_type("text/html").body(display_page)
 }
+
+

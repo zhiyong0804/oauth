@@ -222,10 +222,17 @@ impl Client {
     }
 }
 
-fn parse_token_response(mut response: Response) -> Result<TokenMap, serde_json::Error> {
+fn parse_token_response(mut response: Response) -> Result<TokenMap, Error> {
     let mut token = String::new();
     response.read_to_string(&mut token).unwrap();
-    serde_json::from_str(&token)
+    return match serde_json::from_str::<TokenMap>(&token) {
+        Ok(v) => {
+            Ok(v)
+        }
+        Err(err) => {
+            Err(Error::Response(token))
+        }
+    }
 }
 
 impl From<serde_json::Error> for Error {
