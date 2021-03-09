@@ -29,7 +29,6 @@ cdrs_helpers_derive = { version = "0.4" }
 cfg-if = "1"
 
 [features]
-default = ["redis-isolate"]
 redis-isolate = []
 redis-cluster = []
 scylla-cluster = []

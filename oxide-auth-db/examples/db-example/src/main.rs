@@ -143,10 +143,10 @@ pub fn main() {
     // Start, then open in browser, don't care about this finishing.
     let _ = sys.block_on(start_browser());
 
-    let repo = DataSource::new(&redis_url,  &client_prefix, None).unwrap();
+    // let repo = DataSource::new(&redis_url,  &client_prefix, None).unwrap();
     // let repo = DataSource::new(vec!["redis://49.234.147.154:7001".to_string(),"redis://49.234.137.250:7001".to_string(),"redis://49.234.132.121:7001".to_string()], Some("idreamsky@123".to_string()),  client_prefix).unwrap();
     // let repo = DataSource::new(vec!["106.52.187.25:9042"],  "cassandra", "Brysj@1gsycl", "xapi", "apps").unwrap();
-    // let repo = DataSource::new(&redis_url, &client_prefix, None,vec!["106.52.187.25:9042"],  "cassandra", "Brysj@1gsycl", "xapi", "apps").unwrap();
+    let repo = DataSource::new(&redis_url, &client_prefix, None,vec!["106.52.187.25:9042"],  "cassandra", "Brysj@1gsycl", "xapi", "apps").unwrap();
     // let repo = RedisClusterScyllaCluster::new(vec!["redis://49.234.147.154:7001"], &client_prefix, Some(""), vec!["106.52.187.25:9042"], "cassandra", "Brysj@1gsycl", "xapi", "apps").unwrap();
 
     let oauth_db_service =
