@@ -1,35 +1,25 @@
-/// redis with redis
-#[cfg(feature = "with-redis")]
+mod client_data;
+use client_data::*;
+
+
 pub mod redis;
-#[cfg(feature = "with-redis")]
-use redis::DBDataSource;
+use redis::RedisDataSource;
 
 
 
-/// redis with redis cluster
-#[cfg(feature = "with-redis-cluster")]
 pub mod redis_cluster;
-#[cfg(feature = "with-redis-cluster")]
-use redis_cluster::DBDataSource;
+use redis_cluster::RedisClusterDataSource;
 
-/// redis with scylla
-#[cfg(feature = "with-scylla")]
-pub mod scylla;
-#[cfg(feature = "with-scylla")]
-use scylla::DBDataSource;
+pub mod scylla_cluster;
+use scylla_cluster::ScyllaClusterDataSource;
 
-/// redis with scylla as persistence
-#[cfg(feature = "with-redis-scylla")]
-pub mod redis_scylla;
-#[cfg(feature = "with-redis-scylla")]
-use redis_scylla::DBDataSource;
+pub mod redis_isolate_scylla_cluster;
+use redis_isolate_scylla_cluster::RedisIsolateScyllaCluster;
+
+pub mod redis_cluster_scylla_cluster;
+use redis_cluster_scylla_cluster::RedisClusterScyllaCluster;
 
 
-#[cfg(feature = "with-cluster-redis-scylla")]
-pub mod redis_scylla_cluster;
-#[cfg(feature = "with-cluster-redis-scylla")]
-use redis_scylla_cluster::DBDataSource;
 
 
-pub type DataSource = DBDataSource;
 

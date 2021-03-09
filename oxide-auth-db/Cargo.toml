@@ -23,15 +23,7 @@ tokio = { version = "0.2", features = ["full"] }
 reqwest = "^0.9"
 log = "0.4"
 log4rs = "0.10.0"
-redis = { version = "0.20", optional = true, features = ["r2d2", "cluster", "connection-manager", "tokio-comp"] }
-cdrs = { version = "2", optional = true }
-cdrs_helpers_derive = { version = "0.4", optional = true }
+redis = { version = "0.20", features = ["r2d2", "cluster", "connection-manager", "tokio-comp"] }
+cdrs = { version = "2"}
+cdrs_helpers_derive = { version = "0.4" }
 
-
-[features]
-default = ["with-cluster-redis-scylla"]
-with-redis = ["redis"]
-with-redis-cluster = ["redis"]
-with-scylla = ["cdrs", "cdrs_helpers_derive"]
-with-redis-scylla = ["redis", "cdrs", "cdrs_helpers_derive"]
-with-cluster-redis-scylla = ["redis", "cdrs", "cdrs_helpers_derive"]

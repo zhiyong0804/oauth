@@ -1,6 +1,4 @@
-use crate::primitives::db_registrar::OauthClientDBRepository;
-use oxide_auth::primitives::prelude::Scope;
-use oxide_auth::primitives::registrar::{ClientType, EncodedClient, RegisteredUrl, ExactUrl};
+use oxide_auth::primitives::registrar::EncodedClient;
 
 use redis::{Commands, RedisError, ErrorKind, ConnectionInfo};
 use redis::cluster::{ClusterClient as Client, ClusterClientBuilder};
@@ -17,10 +15,13 @@ use cdrs::types::from_cdrs::FromCDRSByName;
 use std::str::FromStr;
 use url::Url;
 
+use super::StringfiedEncodedClient;
+use crate::primitives::db_registrar::OauthClientDBRepository;
+
 type CurrentSession = Session<RoundRobin<TcpConnectionPool<StaticPasswordAuthenticator>>>;
 
 /// redis datasource to Client entries.
-pub struct DBDataSource {
+pub struct RedisClusterScyllaCluster {
     scylla_session: CurrentSession,
     redis_client: Client,
     redis_prefix: String,
@@ -28,88 +29,14 @@ pub struct DBDataSource {
     db_table: String,
 }
 
-/// A client whose credentials have been wrapped by a password policy.
-///
-/// This provides a standard encoding for `Registrars` who wish to store their clients and makes it
-/// possible to test password policies.
-#[derive(Clone, Debug, IntoCDRSValue, TryFromRow, PartialEq, Default, Serialize, Deserialize)]
-pub struct StringfiedEncodedClient {
-    /// The id of this client. If this is was registered at a `Registrar`, this should be a key
-    /// to the instance.
-    pub client_id: String,
 
-    /// The registered redirect uri.
-    /// Unlike `additional_redirect_uris`, this is registered as the default redirect uri
-    /// and will be replaced if, for example, no `redirect_uri` is specified in the request parameter.
-    pub redirect_uri: String,
-
-    /// The redirect uris that can be registered in addition to the `redirect_uri`.
-    /// If you want to register multiple redirect uris, register them together with `redirect_uri`.
-    pub additional_redirect_uris: Option<Vec<String>>,
-
-    /// The scope the client gets if none was given.
-    pub default_scope: Option<String>,
-
-    /// client_secret, for authentication.
-    pub client_secret: Option<String>,
-}
-
-impl StringfiedEncodedClient {
-    pub fn to_encoded_client(&self) -> anyhow::Result<EncodedClient> {
-        let redirect_uri = RegisteredUrl::from(ExactUrl::from_str(&self.redirect_uri)?);
-        let uris = &self.additional_redirect_uris.clone().unwrap_or_default();
-        let additional_redirect_uris = uris.iter().fold(vec![], |mut us, u| {
-            us.push(RegisteredUrl::from(ExactUrl::from_str(u).unwrap()));
-            us
-        });
-
-        let client_type = match &self.client_secret {
-            None => ClientType::Public,
-            Some(secret) => ClientType::Confidential {
-                passdata: secret.to_owned().into_bytes(),
-            },
-        };
-
-        Ok(EncodedClient {
-            client_id: (&self.client_id).parse().unwrap(),
-            redirect_uri,
-            additional_redirect_uris,
-            default_scope: Scope::from_str(
-                self.default_scope.as_ref().unwrap_or(&"".to_string()).as_ref(),
-            )
-                .unwrap(),
-            encoded_client: client_type,
-        })
-    }
-
-    pub fn from_encoded_client(encoded_client: &EncodedClient) -> Self {
-        let additional_redirect_uris = encoded_client
-            .additional_redirect_uris
-            .iter()
-            .map(|u| u.to_owned().as_str().parse().unwrap())
-            .collect();
-        let default_scope = Some(encoded_client.default_scope.to_string());
-        let client_secret = match &encoded_client.encoded_client {
-            ClientType::Public => None,
-            ClientType::Confidential { passdata } => Some(String::from_utf8(passdata.to_vec()).unwrap()),
-        };
-        StringfiedEncodedClient {
-            client_id: encoded_client.client_id.to_owned(),
-            redirect_uri: encoded_client.redirect_uri.to_owned().as_str().parse().unwrap(),
-            additional_redirect_uris: Some(additional_redirect_uris),
-            default_scope,
-            client_secret,
-        }
-    }
-}
-
-impl DBDataSource {
-    pub fn new(redis_nodes: Vec<&str>, redis_prefix: &str, password: Option<&str>, db_nodes: Vec<&str>, db_user: &str, db_pwd: &str, db_name: &str, db_table: &str) -> anyhow::Result<Self> {
+impl RedisClusterScyllaCluster {
+    pub fn new(redis_nodes: Vec<&str>, redis_prefix: &str, redis_pwd: Option<&str>, db_nodes: Vec<&str>, db_user: &str, db_pwd: &str, db_name: &str, db_table: &str) -> anyhow::Result<Self> {
 
         let client = {
             let mut builder = ClusterClientBuilder::new(redis_nodes);
-            if password.is_some() {
-                builder = builder.password(password.unwrap_or_default().to_string());
+            if redis_pwd.is_some() {
+                builder = builder.password(redis_pwd.unwrap_or_default().to_string());
             }
             let client = builder.open()?;
             client
@@ -127,7 +54,7 @@ impl DBDataSource {
             session
         };
 
-        Ok(DBDataSource {
+        Ok(RedisClusterScyllaCluster {
             scylla_session: session,
             redis_client: client,
             redis_prefix: redis_prefix.to_string(),
@@ -144,7 +71,7 @@ impl DBDataSource {
 
 }
 
-impl OauthClientDBRepository for DBDataSource {
+impl OauthClientDBRepository for RedisClusterScyllaCluster {
     fn list(&self) -> anyhow::Result<Vec<EncodedClient>> {
         let mut encoded_clients: Vec<EncodedClient> = vec![];
         let mut r = self.redis_client.get_connection()?;
