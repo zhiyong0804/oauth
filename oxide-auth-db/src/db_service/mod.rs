@@ -2,8 +2,8 @@ mod client_data;
 use client_data::*;
 
 
-pub mod redis;
-use redis::RedisDataSource;
+pub mod redis_isolate;
+use redis_isolate::RedisDataSource;
 
 
 
