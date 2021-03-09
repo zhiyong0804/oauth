@@ -25,8 +25,7 @@ use std::{thread, env};
 use std::io::Write;
 use std::collections::hash_map::HashMap;
 use std::time::Duration;
-use oxide_auth_db::db_service::redis_cluster_scylla_cluster::RedisClusterScyllaCluster;
-use oxide_auth_db::db_service::redis_isolate_scylla_cluster::RedisIsolateScyllaCluster;
+use oxide_auth_db::db_service::DataSource;
 
 static DENY_TEXT: &str = "<html>
 This page should be accessed via an oauth token from the client in the example. Click
@@ -144,10 +143,10 @@ pub fn main() {
     // Start, then open in browser, don't care about this finishing.
     let _ = sys.block_on(start_browser());
 
-    // let repo = DataSource::new(redis_url,  client_prefix).unwrap();
+    let repo = DataSource::new(&redis_url,  &client_prefix, None).unwrap();
     // let repo = DataSource::new(vec!["redis://49.234.147.154:7001".to_string(),"redis://49.234.137.250:7001".to_string(),"redis://49.234.132.121:7001".to_string()], Some("idreamsky@123".to_string()),  client_prefix).unwrap();
     // let repo = DataSource::new(vec!["106.52.187.25:9042"],  "cassandra", "Brysj@1gsycl", "xapi", "apps").unwrap();
-    let repo = RedisIsolateScyllaCluster::new(&redis_url, &client_prefix, None,vec!["106.52.187.25:9042"],  "cassandra", "Brysj@1gsycl", "xapi", "apps").unwrap();
+    // let repo = DataSource::new(&redis_url, &client_prefix, None,vec!["106.52.187.25:9042"],  "cassandra", "Brysj@1gsycl", "xapi", "apps").unwrap();
     // let repo = RedisClusterScyllaCluster::new(vec!["redis://49.234.147.154:7001"], &client_prefix, Some(""), vec!["106.52.187.25:9042"], "cassandra", "Brysj@1gsycl", "xapi", "apps").unwrap();
 
     let oauth_db_service =
@@ -180,7 +179,7 @@ pub fn main() {
 
 struct State {
     endpoint: Generic<
-        DBRegistrar<RedisIsolateScyllaCluster>,
+        DBRegistrar,
         AuthMap<RandomGenerator>,
         TokenMap<RandomGenerator>,
         Vacant,
@@ -190,7 +189,7 @@ struct State {
 }
 
 impl State {
-    pub fn preconf_db_registrar(db_service: DBRegistrar<RedisIsolateScyllaCluster>) -> Self {
+    pub fn preconf_db_registrar(db_service: DBRegistrar) -> Self {
         State {
             endpoint: Generic {
                 // A redis db registrar, user can use regist() function to pre regist some clients.

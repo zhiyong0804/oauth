@@ -7,11 +7,13 @@ use oxide_auth::primitives::registrar::{
 };
 use oxide_auth::primitives::prelude::{ClientUrl, PreGrant, Scope};
 
+use crate::db_service::DataSource;
+
 /// A database client service which implemented Registrar.
 /// db: repository service to query stored clients or regist new client.
 /// password_policy: to encode client_secret.
-pub struct DBRegistrar<T> {
-    pub repo: T,
+pub struct DBRegistrar {
+    pub repo: DataSource,
     password_policy: Option<Box<dyn PasswordPolicy>>,
 }
 
@@ -31,9 +33,9 @@ pub trait OauthClientDBRepository {
 
 static DEFAULT_PASSWORD_POLICY: Lazy<Argon2> = Lazy::new(|| Argon2::default());
 
-impl <T>DBRegistrar<T> where T: OauthClientDBRepository {
+impl DBRegistrar {
     /// Create an DB connection recording to features.
-    pub fn new(repo: T) -> Self {
+    pub fn new(repo: DataSource) -> Self {
         DBRegistrar {
             repo,
             password_policy: None,
@@ -64,7 +66,7 @@ impl <T>DBRegistrar<T> where T: OauthClientDBRepository {
     }
 }
 
-impl <T>Extend<Client> for DBRegistrar<T> where T: OauthClientDBRepository {
+impl Extend<Client> for DBRegistrar {
     fn extend<I>(&mut self, iter: I)
     where
         I: IntoIterator<Item = Client>,
@@ -75,7 +77,7 @@ impl <T>Extend<Client> for DBRegistrar<T> where T: OauthClientDBRepository {
     }
 }
 
-impl <T>Registrar for DBRegistrar<T> where T: OauthClientDBRepository{
+impl Registrar for DBRegistrar{
     fn bound_redirect<'a>(&self, bound: ClientUrl<'a>) -> Result<BoundClient<'a>, RegistrarError> {
         let client = match self.repo.find_client_by_id(bound.client_id.as_ref()) {
             Ok(detail) => detail,
