@@ -25,9 +25,9 @@ pub mod redis_scylla;
 use redis_scylla::DBDataSource;
 
 
-#[cfg(feature = "with-redis-scylla-cluster")]
+#[cfg(feature = "with-cluster-redis-scylla")]
 pub mod redis_scylla_cluster;
-#[cfg(feature = "with-redis-scylla-cluster")]
+#[cfg(feature = "with-cluster-redis-scylla")]
 use redis_scylla_cluster::DBDataSource;
 
 
