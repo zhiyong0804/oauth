@@ -25,7 +25,10 @@ impl RedisClusterDataSource {
         if password.is_some() {
             builder = builder.password(password.unwrap_or_default());
         }
-        let client = builder.open()?;
+        let client = builder.open().map_err(|err|{
+            error!("{}", err.to_string());
+            err
+        })?;
         Ok(RedisClusterDataSource {
             client,
             client_prefix,

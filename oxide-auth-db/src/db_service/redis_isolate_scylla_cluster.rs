@@ -29,11 +29,19 @@ pub struct RedisIsolateScyllaCluster {
 
 impl RedisIsolateScyllaCluster {
     pub fn new(redis_url: &str, redis_prefix: &str, redis_pwd: Option<&str>, db_nodes: Vec<&str>, db_user: &str, db_pwd: &str, db_name: &str, db_table: &str) -> anyhow::Result<Self> {
-        let mut info = ConnectionInfo::from_str(redis_url)?;
+
+        let mut info = ConnectionInfo::from_str(redis_url).map_err(|err|{
+            error!("{}", err.to_string());
+            err
+        })?;
+
         if redis_pwd.is_some(){
             info.passwd = redis_pwd.map(|s|s.to_string());
         }
-        let client = Client::open(info)?;
+        let client = Client::open(info).map_err(|err|{
+            error!("{}", err.to_string());
+            err
+        })?;
 
         let auth = StaticPasswordAuthenticator::new(db_user, db_pwd);
         let mut configs = vec![];
@@ -42,7 +50,10 @@ impl RedisIsolateScyllaCluster {
             let node = NodeTcpConfigBuilder::new(n, auth.clone()).build();
             configs.push(node);
         }
-        let session = new_session(&ClusterTcpConfig(configs), RoundRobin::new())?;
+        let session = new_session(&ClusterTcpConfig(configs), RoundRobin::new()).map_err(|err|{
+            error!("{}", err.to_string());
+            err
+        })?;
 
         Ok(RedisIsolateScyllaCluster {
             scylla_session: session,

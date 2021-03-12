@@ -18,9 +18,15 @@ pub struct RedisDataSource {
 
 impl RedisDataSource {
     pub fn new(url: &str, client_prefix: &str, password: Option<String>) -> Result<Self, RedisError> {
-        let mut info = ConnectionInfo::from_str(url)?;
+        let mut info = ConnectionInfo::from_str(url).map_err(|err|{
+            error!("{}", err.to_string());
+            err
+        })?;
         info.passwd = password;
-        let client = Client::open(info)?;
+        let client = Client::open(info).map_err(|err|{
+            error!("{}", err.to_string());
+            err
+        })?;
         Ok(RedisDataSource {
             client,
             client_prefix: client_prefix.to_string(),

@@ -38,7 +38,10 @@ impl RedisClusterScyllaCluster {
             if redis_pwd.is_some() {
                 builder = builder.password(redis_pwd.unwrap_or_default().to_string());
             }
-            let client = builder.open()?;
+            let client = builder.open().map_err(|err|{
+                error!("{}", err.to_string());
+                err
+            })?;
             client
         };
 
@@ -50,7 +53,10 @@ impl RedisClusterScyllaCluster {
                 let node = NodeTcpConfigBuilder::new(n, auth.clone()).build();
                 configs.push(node);
             }
-            let session = new_session(&ClusterTcpConfig(configs), RoundRobin::new())?;
+            let session = new_session(&ClusterTcpConfig(configs), RoundRobin::new()).map_err(|err|{
+                error!("{}", err.to_string());
+                err
+            })?;
             session
         };
 

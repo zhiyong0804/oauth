@@ -35,7 +35,10 @@ impl ScyllaClusterDataSource {
             let node = NodeTcpConfigBuilder::new(n, auth.clone()).build();
             configs.push(node);
         }
-        let session = new_session(&ClusterTcpConfig(configs), RoundRobin::new())?;
+        let session = new_session(&ClusterTcpConfig(configs), RoundRobin::new()).map_err(|err|{
+            error!("{}", err.to_string());
+            err
+        })?;
 
         Ok(ScyllaClusterDataSource {
             session,
