@@ -36,7 +36,7 @@ pub struct StringfiedEncodedClient {
 impl StringfiedEncodedClient {
     pub fn to_encoded_client(&self) -> anyhow::Result<EncodedClient> {
         let redirect_uri = RegisteredUrl::from(ExactUrl::from_str(&self.redirect_uri)?);
-        let uris = &self.additional_redirect_uris.unwrap_or_default();
+        let uris = &self.additional_redirect_uris.clone().unwrap_or_default();
         let additional_redirect_uris = uris.iter().fold(vec![], |mut us, u| {
             us.push(RegisteredUrl::from(ExactUrl::from_str(u).unwrap()));
             us
