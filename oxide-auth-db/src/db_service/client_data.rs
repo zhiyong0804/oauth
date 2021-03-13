@@ -62,11 +62,17 @@ impl StringfiedEncodedClient {
     }
 
     pub fn from_encoded_client(encoded_client: &EncodedClient) -> Self {
-        let additional_redirect_uris = encoded_client
-            .additional_redirect_uris
-            .iter()
-            .map(|u| u.to_owned().as_str().parse().unwrap())
-            .collect();
+        let additional_redirect_uris = {
+            if encoded_client.additional_redirect_uris.is_empty(){
+                None
+            }else{
+                Some(encoded_client
+                    .additional_redirect_uris
+                    .iter()
+                    .map(|u| u.to_owned().as_str().parse().unwrap())
+                    .collect())
+            }
+        };
         let default_scope = Some(encoded_client.default_scope.to_string());
         let client_secret = match &encoded_client.encoded_client {
             ClientType::Public => None,
