@@ -24,7 +24,7 @@ pub struct StringfiedEncodedClient {
 
     /// The redirect uris that can be registered in addition to the `redirect_uri`.
     /// If you want to register multiple redirect uris, register them together with `redirect_uri`.
-    pub additional_redirect_uris: Vec<String>,
+    pub additional_redirect_uris: Option<Vec<String>>,
 
     /// The scope the client gets if none was given.
     pub default_scope: Option<String>,
@@ -36,7 +36,7 @@ pub struct StringfiedEncodedClient {
 impl StringfiedEncodedClient {
     pub fn to_encoded_client(&self) -> anyhow::Result<EncodedClient> {
         let redirect_uri = RegisteredUrl::from(ExactUrl::from_str(&self.redirect_uri)?);
-        let uris = &self.additional_redirect_uris;
+        let uris = &self.additional_redirect_uris.unwrap_or_default();
         let additional_redirect_uris = uris.iter().fold(vec![], |mut us, u| {
             us.push(RegisteredUrl::from(ExactUrl::from_str(u).unwrap()));
             us
