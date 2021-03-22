@@ -35,7 +35,6 @@ here</a> to begin the authorization process.
 ";
 
 
-
 enum Extras {
     AuthGet,
     AuthPost(String),
@@ -98,8 +97,10 @@ async fn refresh(
 }
 
 async fn index(
-    (req, state): (OAuthResource, web::Data<Addr<State>>),
+    (req, state): (HttpRequest, web::Data<Addr<State>>),
 ) -> Result<OAuthResponse, WebError> {
+    debug!("/index {:?}\n\n", req);
+    let req = OAuthResource::new(&req).unwrap();
     let res = match state
         .send(Resource(req.into_request()).wrap(Extras::Nothing))
         .await.map_err(|err| {
@@ -124,12 +125,13 @@ async fn start_browser() -> () {
 }
 
 /// Example of a main function of an actix-web server supporting oauth.
-pub fn main() {
+#[actix_web::main]
+async fn main() {
     env_logger::Builder::new().format(|buf, record| {
         writeln!(buf, "[{}] {}:{} {}", record.level(), record.module_path().unwrap_or_default(), record.line().unwrap_or(0), record.args())
     }).parse_filters("debug,tokio_reactor=info,hyper=info").init();
 
-    std::env::set_var("REDIS_URL", "redis://129.204.249.76:30379/0");
+    std::env::set_var("REDIS_URL", "redis://129.204.249.76:30379/2");
     std::env::set_var("MAX_POOL_SIZE", "32");
 
     std::env::set_var("CLIENT_PREFIX", "client:");
@@ -138,20 +140,21 @@ pub fn main() {
     let redis_url = env::var("REDIS_URL").expect("REDIS_URL should be set");
     let client_prefix = env::var("CLIENT_PREFIX").unwrap_or("client:".parse().unwrap());
 
-    let mut sys = actix_rt::System::new("HttpServerClient");
+    // let mut rt = actix_rt::System::new("test");
 
     // Start, then open in browser, don't care about this finishing.
-    let _ = sys.block_on(start_browser());
+    // let _ = rt.block_on(start_browser());
 
     // let repo = DataSource::new(&redis_url,  &client_prefix, None).unwrap();
     // let repo = DataSource::new(vec!["redis://49.234.147.154:7001".to_string(),"redis://49.234.137.250:7001".to_string(),"redis://49.234.132.121:7001".to_string()], Some("idreamsky@123".to_string()),  client_prefix).unwrap();
     // let repo = DataSource::new(vec!["106.52.187.25:9042"],  "cassandra", "Brysj@1gsycl", "xapi", "apps").unwrap();
-    let repo = DataSource::new(&redis_url, &client_prefix, None,vec!["106.52.187.25:9042"],  "cassandra", "Brysj@1gsycl", "xapi", "apps").unwrap();
+    let repo = DataSource::new(&redis_url, &client_prefix, None, vec!["106.52.187.25:9042"], "cassandra", "Brysj@1gsycl", "xapi", "apps").unwrap();
     // let repo = RedisClusterScyllaCluster::new(vec!["redis://49.234.147.154:7001"], &client_prefix, Some(""), vec!["106.52.187.25:9042"], "cassandra", "Brysj@1gsycl", "xapi", "apps").unwrap();
 
     let oauth_db_service =
         DBRegistrar::new(repo);
 
+    // let sys = actix::System::new();
     let state = State::preconf_db_registrar(oauth_db_service).start();
 
     // Create the main server instance
@@ -170,11 +173,11 @@ pub fn main() {
     })
         .bind("localhost:8020")
         .expect("Failed to bind to socket")
-        .run();
+        .run().await;
 
     support::dummy_client();
     // Run the rest of the system.
-    let _ = sys.run();
+    // let _ = rt.run();
 }
 
 struct State {
