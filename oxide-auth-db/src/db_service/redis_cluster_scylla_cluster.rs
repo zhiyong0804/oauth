@@ -68,10 +68,17 @@ impl RedisClusterScyllaCluster {
             db_table: db_table.to_string(),
         })
     }
+
     pub fn regist_to_cache(&self, detail: &StringfiedEncodedClient) -> anyhow::Result<()> {
         let mut connect = self.redis_client.get_connection()?;
         let client_str = serde_json::to_string(&detail)?;
         connect.set_ex(&(self.redis_prefix.to_owned() + &detail.client_id), client_str, 3600)?;
+        Ok(())
+    }
+
+    pub fn delete_from_cache(&self, client_id: &str) -> anyhow::Result<()> {
+        let mut connect = self.redis_client.get_connection()?;
+        connect.del(client_id)?;
         Ok(())
     }
 

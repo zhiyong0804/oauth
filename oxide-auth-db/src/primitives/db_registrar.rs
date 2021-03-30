@@ -130,6 +130,7 @@ impl Registrar for DBRegistrar{
             .map_err(|_e| {
                 error!("{}", _e.to_string());
                 RegistrarError::Unspecified });
+
         client.and_then(|op_client| {
             RegisteredClient::new(&op_client, password_policy).check_authentication(passphrase)
         }).map_err(|err|{

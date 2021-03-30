@@ -70,6 +70,12 @@ impl RedisIsolateScyllaCluster {
         Ok(())
     }
 
+    pub fn delete_from_cache(&self, client_id: &str) -> anyhow::Result<()> {
+        let mut connect = self.redis_client.get_connection()?;
+        connect.del(client_id)?;
+        Ok(())
+    }
+
 }
 
 impl OauthClientDBRepository for RedisIsolateScyllaCluster {

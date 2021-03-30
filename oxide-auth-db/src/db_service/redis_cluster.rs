@@ -14,45 +14,49 @@ use crate::primitives::db_registrar::OauthClientDBRepository;
 /// redis datasource to Client entries.
 #[derive(Clone)]
 pub struct RedisClusterDataSource {
-    client: Client,
-    client_prefix: String,
+    redis_client: Client,
+    redis_prefix: String,
 }
 
 
 impl RedisClusterDataSource {
-    pub fn new(nodes: Vec<String>, password: Option<String>, client_prefix: String) -> Result<Self, RedisError> {
+    pub fn new(nodes: Vec<String>, password: Option<String>, redis_prefix: String) -> Result<Self, RedisError> {
         let mut builder = ClusterClientBuilder::new(nodes);
         if password.is_some() {
             builder = builder.password(password.unwrap_or_default());
         }
-        let client = builder.open().map_err(|err|{
+        let redis_client = builder.open().map_err(|err|{
             error!("{}", err.to_string());
             err
         })?;
         Ok(RedisClusterDataSource {
-            client,
-            client_prefix,
+            redis_client,
+            redis_prefix,
         })
     }
-}
 
-impl RedisClusterDataSource {
-    /// users can regist to redis a custom client struct which can be Serialized and Deserialized.
-    pub fn regist(&self, detail: &StringfiedEncodedClient) -> anyhow::Result<()> {
-        let mut connect = self.client.get_connection()?;
+    pub fn regist_to_cache(&self, detail: &StringfiedEncodedClient) -> anyhow::Result<()> {
+        let mut connect = self.redis_client.get_connection()?;
         let client_str = serde_json::to_string(&detail)?;
-        connect.set(&(self.client_prefix.to_owned() + &detail.client_id), client_str)?;
+        connect.set_ex(&(self.redis_prefix.to_owned() + &detail.client_id), client_str, 3600)?;
+        Ok(())
+    }
+
+    pub fn delete_from_cache(&self, client_id: &str) -> anyhow::Result<()> {
+        let mut connect = self.redis_client.get_connection()?;
+        connect.del(client_id)?;
         Ok(())
     }
 }
+
 
 impl OauthClientDBRepository for RedisClusterDataSource {
     fn list(&self) -> anyhow::Result<Vec<EncodedClient>> {
         debug!("list");
         let mut encoded_clients: Vec<EncodedClient> = vec![];
-        let mut r = self.client.get_connection()?;
+        let mut r = self.redis_client.get_connection()?;
         r.set_read_timeout(Some(Duration::from_secs(5)))?;
-        let keys = r.keys::<&str, Vec<String>>(&self.client_prefix)?;
+        let keys = r.keys::<&str, Vec<String>>(&self.redis_prefix)?;
         for key in keys {
             let clients_str = r.get::<String, String>(key)?;
             let stringfied_client = serde_json::from_str::<StringfiedEncodedClient>(&clients_str)?;
@@ -63,10 +67,10 @@ impl OauthClientDBRepository for RedisClusterDataSource {
 
     fn find_client_by_id(&self, id: &str) -> anyhow::Result<EncodedClient> {
         debug!("find_client_by_id");
-        let mut r = self.client.get_connection().unwrap();
+        let mut r = self.redis_client.get_connection().unwrap();
         debug!("find_client_by_id");
         r.set_read_timeout(Some(Duration::from_secs(5)))?;
-        let client_str = r.get::<&str, String>(&(self.client_prefix.to_owned() + id))?;
+        let client_str = r.get::<&str, String>(&(self.redis_prefix.to_owned() + id))?;
         let stringfied_client = serde_json::from_str::<StringfiedEncodedClient>(&client_str).map_err(|err|{
             error!("id={}, client_str={}, error={}", id, client_str, err.to_string());
             err
@@ -79,6 +83,6 @@ impl OauthClientDBRepository for RedisClusterDataSource {
 
     fn regist_from_encoded_client(&self, client: EncodedClient) -> anyhow::Result<()> {
         let detail = StringfiedEncodedClient::from_encoded_client(&client);
-        self.regist(&detail)
+        self.regist_to_cache(&detail)
     }
 }
