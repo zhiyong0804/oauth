@@ -5,6 +5,7 @@ use cdrs::types::from_cdrs::FromCDRSByName;
 use cdrs::frame::IntoBytes;
 
 use std::str::FromStr;
+use std::borrow::Borrow;
 
 
 /// A client whose credentials have been wrapped by a password policy.
@@ -35,7 +36,7 @@ pub struct StringfiedEncodedClient {
 
 impl StringfiedEncodedClient {
     pub fn to_encoded_client(&self) -> anyhow::Result<EncodedClient> {
-        let redirect_uri = RegisteredUrl::from(ExactUrl::from_str(&self.redirect_uri.unwrap_or_default())?);
+        let redirect_uri = RegisteredUrl::from(ExactUrl::from_str(&self.redirect_uri.clone().unwrap_or_default())?);
         let uris = &self.additional_redirect_uris.clone().unwrap_or_default();
         let additional_redirect_uris = uris.iter().fold(vec![], |mut us, u| {
             us.push(RegisteredUrl::from(ExactUrl::from_str(u).unwrap()));
@@ -80,7 +81,7 @@ impl StringfiedEncodedClient {
         };
         StringfiedEncodedClient {
             client_id: encoded_client.client_id.to_owned(),
-            redirect_uri: encoded_client.redirect_uri.to_owned().as_str().parse().unwrap(),
+            redirect_uri: Some(encoded_client.redirect_uri.to_owned().as_str().parse().unwrap()),
             additional_redirect_uris,
             default_scope,
             client_secret,
