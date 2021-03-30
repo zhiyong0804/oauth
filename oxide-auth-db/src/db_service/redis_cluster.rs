@@ -44,7 +44,7 @@ impl RedisClusterDataSource {
 
     pub fn delete_from_cache(&self, client_id: &str) -> anyhow::Result<()> {
         let mut connect = self.redis_client.get_connection()?;
-        connect.del(client_id)?;
+        connect.del(&(self.redis_prefix.to_owned() + client_id))?;
         Ok(())
     }
 }
