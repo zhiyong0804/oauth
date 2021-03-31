@@ -28,9 +28,8 @@ pub struct RedisIsolateScyllaCluster {
 
 
 impl RedisIsolateScyllaCluster {
-    pub fn new(redis_url: &str, redis_prefix: &str, redis_pwd: Option<&str>, db_nodes: Vec<&str>, db_user: &str, db_pwd: &str, db_name: &str, db_table: &str) -> anyhow::Result<Self> {
-
-        let mut info = ConnectionInfo::from_str(redis_url).map_err(|err|{
+    pub fn new(redis_nodes: Vec<&str>, redis_prefix: &str, redis_pwd: Option<&str>, db_nodes: Vec<&str>, db_user: &str, db_pwd: &str, db_name: &str, db_table: &str) -> anyhow::Result<Self> {
+        let mut info = ConnectionInfo::from_str(redis_nodes[0]).map_err(|err|{
             error!("{}", err.to_string());
             err
         })?;
