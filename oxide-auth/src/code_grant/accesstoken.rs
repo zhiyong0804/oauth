@@ -486,9 +486,9 @@ pub fn access_token(handler: &mut dyn Endpoint, request: &dyn Request) -> Result
             Output::Extend { extensions } => Requested::Extend { extensions },
             Output::Issue { grant } => Requested::Issue { grant },
             Output::Ok(token) => return Ok(token),
-            Output::Err(e) => {
-                error!("err on advance access_token process");
-                return Err(*e); },
+            Output::Err(err) => {
+                error!("{:?}", err);
+                return Err(*err); },
         };
     }
 }
