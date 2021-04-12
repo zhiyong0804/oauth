@@ -518,7 +518,7 @@ impl<'a> Credentials<'a> {
 }
 
 /// Defines actions for the response to an access token request.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Error {
     /// The token did not represent a valid token.
     Invalid(ErrorDescription),
@@ -547,7 +547,7 @@ pub enum Error {
 ///
 /// Note that `token` is not included in this list, since the handler
 /// can never fail after supplying a token to the backend.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct PrimitiveError {
     /// The already extracted grant.
     ///
@@ -561,7 +561,7 @@ pub struct PrimitiveError {
 
 /// Simple wrapper around AccessTokenError to imbue the type with addtional json functionality. In
 /// addition this enforces backend specific behaviour for obtaining or handling the access error.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ErrorDescription {
     error: AccessTokenError,
 }

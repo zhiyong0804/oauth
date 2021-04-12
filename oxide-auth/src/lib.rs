@@ -65,6 +65,10 @@
 //! [`Scopes`]: endpoint/trait.Scopes.html
 #![warn(missing_docs)]
 
+#[macro_use]
+extern crate log;
+
+
 pub mod code_grant;
 pub mod endpoint;
 pub mod frontends;

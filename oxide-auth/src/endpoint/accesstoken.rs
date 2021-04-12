@@ -77,14 +77,17 @@ where
     /// consistent endpoints, the panic is instead caught as an error here.
     pub fn prepare(mut endpoint: E) -> Result<Self, E::Error> {
         if endpoint.registrar().is_none() {
+            error!("endpoint registrar is none");
             return Err(endpoint.error(OAuthError::PrimitiveError));
         }
 
         if endpoint.authorizer_mut().is_none() {
+            error!("endpoint authorizer is none");
             return Err(endpoint.error(OAuthError::PrimitiveError));
         }
 
         if endpoint.issuer_mut().is_none() {
+            error!("endpoint issuer is none");
             return Err(endpoint.error(OAuthError::PrimitiveError));
         }
 
@@ -122,7 +125,9 @@ where
         );
 
         let token = match issued {
-            Err(error) => return token_error(&mut self.endpoint.inner, &mut request, error),
+            Err(error) => {
+                error!("{:?}", error);
+                return token_error(&mut self.endpoint.inner, &mut request, error); },
             Ok(token) => token,
         };
 
