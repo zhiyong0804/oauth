@@ -88,7 +88,7 @@ pub trait Extension {
     /// The input data comes from the extension data produced in the handling of the
     /// authorization code request.
     fn extend(&mut self, request: &dyn Request, data: Extensions)
-        -> std::result::Result<Extensions, ()>;
+              -> std::result::Result<Extensions, ()>;
 }
 
 impl Extension for () {
@@ -438,17 +438,21 @@ pub fn access_token(handler: &mut dyn Endpoint, request: &dyn Request) -> Result
                 handler
                     .registrar()
                     .check(client, passdata)
-                    .map_err(|err| match err {
-                        RegistrarError::Unspecified => Error::unauthorized("basic"),
-                        RegistrarError::PrimitiveError => Error::Primitive(Box::new(PrimitiveError {
-                            grant: None,
-                            extensions: None,
-                        })),
+                    .map_err(|err| {
+                        error!("{:?}", err);
+                        match err {
+                            RegistrarError::Unspecified => Error::unauthorized("basic"),
+                            RegistrarError::PrimitiveError => Error::Primitive(Box::new(PrimitiveError {
+                                grant: None,
+                                extensions: None,
+                            })),
+                        }
                     })?;
                 Input::Authenticated
             }
             Requested::Recover(code) => {
                 let opt_grant = handler.authorizer().extract(code).map_err(|_| {
+                    error!("err on authorizer extract grant by code");
                     Error::Primitive(Box::new(PrimitiveError {
                         grant: None,
                         extensions: None,
@@ -465,6 +469,7 @@ pub fn access_token(handler: &mut dyn Endpoint, request: &dyn Request) -> Result
             }
             Requested::Issue { grant } => {
                 let token = handler.issuer().issue(grant.clone()).map_err(|_| {
+                    error!("err on issuer issue token by grant");
                     Error::Primitive(Box::new(PrimitiveError {
                         // FIXME: endpoint should get and handle these.
                         grant: None,
@@ -481,7 +486,9 @@ pub fn access_token(handler: &mut dyn Endpoint, request: &dyn Request) -> Result
             Output::Extend { extensions } => Requested::Extend { extensions },
             Output::Issue { grant } => Requested::Issue { grant },
             Output::Ok(token) => return Ok(token),
-            Output::Err(e) => return Err(*e),
+            Output::Err(e) => {
+                error!("err on advance access_token process");
+                return Err(*e); },
         };
     }
 }
