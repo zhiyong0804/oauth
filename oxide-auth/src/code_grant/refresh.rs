@@ -491,7 +491,7 @@ fn validate(scope: Option<Cow<str>>, grant: Box<Grant>, token: String) -> Result
     // Update the grant with the derived data.
     let mut grant = grant;
     grant.scope = scope;
-    grant.until = Utc::now() + Duration::hours(1);
+    grant.until = Utc::now() + Duration::days(7);
 
     Ok(RefreshState::Issuing { grant, token })
 }

@@ -467,7 +467,7 @@ impl Pending {
                 client_id: self.pre_grant.client_id,
                 redirect_uri: self.pre_grant.redirect_uri.into_url(),
                 scope: self.pre_grant.scope,
-                until: Utc::now() + Duration::minutes(10),
+                until: Utc::now() + Duration::days(1),
                 extensions: self.extensions,
             })
             .map_err(|()| Error::PrimitiveError)?;
