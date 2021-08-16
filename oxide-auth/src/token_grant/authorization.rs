@@ -63,7 +63,7 @@ pub fn authorization_token(handler: &mut dyn Endpoint, request: &dyn Request) ->
         })?;
 
     let grant = Grant {
-        owner_id: "".to_string(),
+        owner_id: request.user_id().unwrap_or_default().to_string(),
         client_id: pre_grant.client_id,
         scope: pre_grant.scope,
         redirect_uri: pre_grant.redirect_uri.into_url(),

@@ -382,6 +382,10 @@ impl<'a, R: WebRequest + 'a> AuthorizationRequest for WrappedRequest<'a, R> {
         self.query.unique_value("state")
     }
 
+    fn user_id(&self) -> Option<Cow<str>> {
+        self.query.unique_value("user_id")
+    }
+
     fn response_type(&self) -> Option<Cow<str>> {
         self.query.unique_value("response_type")
     }

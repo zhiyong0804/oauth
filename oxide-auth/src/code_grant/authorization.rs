@@ -37,6 +37,8 @@ pub trait Request {
 
     /// Retrieve an additional parameter used in an extension
     fn extension(&self, key: &str) -> Option<Cow<str>>;
+
+    fn user_id(&self) -> Option<Cow<str>>;
 }
 
 /// A system of addons provided additional data.
