@@ -3,7 +3,16 @@ use crate::code_grant::authorization::{
     Request as AuthorizationRequest, Pending,
 };
 
+use crate::token_grant::authorization:: {
+    authorization_token,
+};
+
+use crate::code_grant::accesstoken::{
+    Error as TokenError,
+};
+
 use super::*;
+use crate::code_grant::error::AccessTokenErrorType;
 
 /// All relevant methods for handling authorization code requests.
 pub struct AuthorizationFlow<E, R>
@@ -130,25 +139,69 @@ where
     /// When the registrar or the authorizer returned by the endpoint is suddenly `None` when
     /// previously it was `Some(_)`.
     pub fn execute(&mut self, mut request: R) -> Result<R::Response, E::Error> {
-        let negotiated = authorization_code(&mut self.endpoint, &WrappedRequest::new(&mut request));
-
-        let inner = match negotiated {
-            Err(err) => match authorization_error(&mut self.endpoint.inner, &mut request, err) {
-                Ok(response) => AuthorizationPartialInner::Failed { request, response },
-                Err(error) => AuthorizationPartialInner::Error { request, error },
-            },
-            Ok(negotiated) => AuthorizationPartialInner::Pending {
-                pending: AuthorizationPending {
-                    endpoint: &mut self.endpoint,
-                    pending: negotiated,
-                    request,
-                },
-            },
+        let req = WrappedRequest::new(&mut request);
+        let response_type = match req.response_type() {
+            Some( method) => {method}
+            None => {
+                let error = TokenError::invalid_with(AccessTokenErrorType::UnsupportedResponseType);
+                error!("{:?}", error);
+                return token_error(&mut self.endpoint.inner, &mut request, error);
+            }
         };
 
-        let partial = AuthorizationPartial { inner };
+        if response_type.clone() == "code" {
+            let negotiated = authorization_code(&mut self.endpoint, &WrappedRequest::new(&mut request));
 
-        partial.finish()
+            let inner = match negotiated {
+                Err(err) => match authorization_error(&mut self.endpoint.inner, &mut request, err) {
+                    Ok(response) => AuthorizationPartialInner::Failed { request, response },
+                    Err(error) => AuthorizationPartialInner::Error { request, error },
+                },
+                Ok(negotiated) => AuthorizationPartialInner::Pending {
+                    pending: AuthorizationPending {
+                        endpoint: &mut self.endpoint,
+                        pending: negotiated,
+                        request,
+                    },
+                },
+            };
+
+            let partial = AuthorizationPartial { inner };
+
+            return partial.finish();
+        } else if response_type.clone() == "token" {
+            let token = authorization_token(&mut self.endpoint, &req);
+            match token {
+                Err(err) => {
+                    error!("{:?}", err);
+                    return token_error(&mut self.endpoint.inner, &mut request, err);
+                }
+                Ok(token) => {
+                    let redirect_url = format!("{}#access_token={}&token_type={}&expires_in={}&scope={}&state={}",
+                                               req.redirect_uri().unwrap_or_default(),
+                                               token.0.token,
+                                               "Bearer",
+                                               token.0.until,
+                                               token.1,
+                                               req.state().unwrap_or_default());
+                    let mut response = self.endpoint.inner.response(
+                        &mut request,
+                        InnerTemplate::Redirect {
+                            authorization_error: None,
+                        }
+                            .into(),
+                    )?;
+                    if let Ok(url) = Url::parse(redirect_url.as_str()) {
+                        response.redirect(url).map_err(|err| self.endpoint.inner.web_error(err))?;
+                        return Ok(response);
+                    }
+                }
+            }
+        }
+
+        let error = TokenError::invalid_with(AccessTokenErrorType::ServerError);
+        error!("{:?}", error);
+        return token_error(&mut self.endpoint.inner, &mut request, error);
     }
 }
 
@@ -273,6 +326,15 @@ impl<E: Endpoint<R>, R: WebRequest> AuthorizationEndpoint for WrappedAuthorizati
             .and_then(super::Extension::authorization)
             .unwrap_or(&mut self.extension_fallback)
     }
+
+    fn issuer(&mut self) -> &mut dyn Issuer {
+        self.inner.issuer_mut().unwrap()
+    }
+
+    // fn response(&mut self, request: &mut R, kind: Template) -> Result<R::Response, Self::Error> {
+    //
+    //     self.inner.response(request, kind)
+    // }
 }
 
 impl<'a, R: WebRequest + 'a> WrappedRequest<'a, R> {

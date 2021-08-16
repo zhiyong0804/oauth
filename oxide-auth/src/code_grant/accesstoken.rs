@@ -576,7 +576,7 @@ pub struct ErrorDescription {
 type Result<T> = std::result::Result<T, Error>;
 
 /// Represents an access token, a refresh token and the associated scope for serialization.
-pub struct BearerToken(IssuedToken, String);
+pub struct BearerToken(pub IssuedToken, pub String);
 
 impl Error {
     /// Create invalid error type
@@ -586,7 +586,7 @@ impl Error {
         })
     }
 
-    fn invalid_with(with_type: AccessTokenErrorType) -> Self {
+    pub fn invalid_with(with_type: AccessTokenErrorType) -> Self {
         Error::Invalid(ErrorDescription {
             error: {
                 let mut error = AccessTokenError::default();

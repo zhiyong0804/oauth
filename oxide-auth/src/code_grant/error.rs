@@ -136,6 +136,11 @@ pub enum AccessTokenErrorType {
     /// The requested scope is invalid, unknown, malformed, or exceeds the scope granted by the
     /// resource owner.
     InvalidScope,
+
+    // only support token,code type
+    UnsupportedResponseType,
+
+    ServerError,
 }
 
 impl AccessTokenErrorType {
@@ -147,6 +152,8 @@ impl AccessTokenErrorType {
             AccessTokenErrorType::UnauthorizedClient => "unauthorized_client",
             AccessTokenErrorType::UnsupportedGrantType => "unsupported_grant_type",
             AccessTokenErrorType::InvalidScope => "invalid_scope",
+            AccessTokenErrorType::UnsupportedResponseType => "unsupported_response_type",
+            AccessTokenErrorType::ServerError => "server_error",
         }
     }
 }

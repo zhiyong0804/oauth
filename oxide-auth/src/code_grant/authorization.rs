@@ -10,6 +10,7 @@ use crate::primitives::authorizer::Authorizer;
 use crate::primitives::registrar::{ClientUrl, ExactUrl, Registrar, RegistrarError, PreGrant};
 use crate::primitives::grant::{Extensions, Grant};
 use crate::{endpoint::Scope, endpoint::Solicitation, primitives::registrar::BoundClient};
+use crate::primitives::issuer::{IssuedToken, Issuer};
 
 /// Interface required from a request to determine the handling in the backend.
 pub trait Request {
@@ -68,6 +69,9 @@ pub trait Endpoint {
     ///
     /// It is possible to use `&mut ()`.
     fn extension(&mut self) -> &mut dyn Extension;
+
+    /// Return the issuer instance to create the access token.
+    fn issuer(&mut self) -> &mut dyn Issuer;
 }
 
 /// The result will indicate wether the authorization succeed or not.

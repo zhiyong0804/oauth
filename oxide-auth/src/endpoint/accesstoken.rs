@@ -119,6 +119,7 @@ where
     /// When the registrar, authorizer, or issuer returned by the endpoint is suddenly
     /// `None` when previously it was `Some(_)`.
     pub fn execute(&mut self, mut request: R) -> Result<R::Response, E::Error> {
+
         let issued = access_token(
             &mut self.endpoint,
             &WrappedRequest::new(&mut request, self.allow_credentials_in_body),
@@ -142,7 +143,7 @@ where
     }
 }
 
-fn token_error<E: Endpoint<R>, R: WebRequest>(
+pub fn token_error<E: Endpoint<R>, R: WebRequest>(
     endpoint: &mut E, request: &mut R, error: TokenError,
 ) -> Result<R::Response, E::Error> {
     Ok(match error {
