@@ -13,6 +13,7 @@ use crate::code_grant::accesstoken::{
 
 use super::*;
 use crate::code_grant::error::AccessTokenErrorType;
+use chrono::{Duration, Utc};
 
 /// All relevant methods for handling authorization code requests.
 pub struct AuthorizationFlow<E, R>
@@ -177,11 +178,12 @@ where
                     return token_error(&mut self.endpoint.inner, &mut request, err);
                 }
                 Ok(token) => {
+                    let remaining = token.0.until.signed_duration_since(Utc::now());
                     let redirect_url = format!("{}#access_token={}&token_type={}&expires_in={}&scope={}&state={}",
                                                req.redirect_uri().unwrap_or_default(),
                                                token.0.token,
                                                "Bearer",
-                                               token.0.until,
+                                               remaining.num_seconds(),
                                                token.1,
                                                req.state().unwrap_or_default());
                     let mut response = self.endpoint.inner.response(

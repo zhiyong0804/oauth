@@ -77,7 +77,7 @@ pub fn authorization_token(handler: &mut dyn Endpoint, request: &dyn Request) ->
         Error::invalid_with(AccessTokenErrorType::ServerError)
     })?;
 
-    let token = IssuedToken::without_refresh(token.token, token.until);
+    let mut token = IssuedToken::without_refresh(token.token, token.until);
 
     info!("client={:?} token={:?}", client_url.clone(), token.clone());
 
