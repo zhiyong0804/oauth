@@ -314,7 +314,7 @@ impl WebResponse for OAuthResponse {
     }
 
     fn redirect(&mut self, url: Url) -> Result<(), Self::Error> {
-        self.status = StatusCode::FOUND;
+        self.status = StatusCode::NO_CONTENT;
         self.headers
             .insert(header::LOCATION, TryFrom::try_from(url.into_string())?);
         Ok(())
