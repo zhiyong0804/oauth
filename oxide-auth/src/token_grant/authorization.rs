@@ -44,6 +44,12 @@ pub fn authorization_token(handler: &mut dyn Endpoint, request: &dyn Request) ->
 
     // 解析scope
     let scope = request.scope();
+    let scope = if let Some(scope) = scope {
+        let scope = scope.replace("%20", " ");
+        Some(Cow::from(scope))
+    } else {
+        None
+    };
     let scope = match scope.map(|scope| scope.as_ref().parse()) {
         None => None,
         Some(Err(_)) => {
