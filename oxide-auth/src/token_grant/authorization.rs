@@ -58,6 +58,8 @@ pub fn authorization_token(handler: &mut dyn Endpoint, request: &dyn Request) ->
         Some(Ok(scope)) => Some(scope),
     };
 
+    debug!("scope = {:?}", scope);
+
     let pre_grant = handler
         .registrar()
         .negotiate(bound_client, scope)
