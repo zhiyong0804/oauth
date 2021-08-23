@@ -70,6 +70,8 @@ pub fn authorization_token(handler: &mut dyn Endpoint, request: &dyn Request) ->
             }
         })?;
 
+    debug!("pre_grant={:?}", pre_grant);
+
     let grant = Grant {
         owner_id: request.user_id().unwrap_or_default().to_string(),
         client_id: pre_grant.client_id,
