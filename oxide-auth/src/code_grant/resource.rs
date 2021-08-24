@@ -316,7 +316,7 @@ fn recovered(grant: Option<Grant>, mut scopes: Vec<Scope>) -> Result<Grant> {
 
     let allowing = scopes
         .iter()
-        .find(|resource_scope| resource_scope.allow_access(&grant.scope));
+        .find(|resource_scope| grant.scope.allow_access(&resource_scope));
 
     if allowing.is_none() {
         return Err(Error::AccessDenied {
