@@ -6,6 +6,7 @@
 use std::collections::HashMap;
 use std::sync::{Arc, MutexGuard, RwLockWriteGuard};
 use std::sync::atomic::{AtomicUsize, Ordering};
+use crate::primitives::registrar::Registrar;
 
 use chrono::{Duration, Utc};
 
@@ -102,6 +103,7 @@ pub struct TokenMap<G: TagGrant = Box<dyn TagGrant + Send + Sync + 'static>> {
     usage: u64,
     access: HashMap<Arc<str>, Arc<Token>>,
     refresh: HashMap<Arc<str>, Arc<Token>>,
+    register: Arc<Registrar>,
 }
 
 struct Token {
@@ -117,13 +119,14 @@ struct Token {
 
 impl<G: TagGrant> TokenMap<G> {
     /// Construct a `TokenMap` from the given generator.
-    pub fn new(generator: G) -> Self {
+    pub fn new(generator: G, register: Arc<Registrar>) -> Self {
         Self {
             duration: None,
             generator,
             usage: 0,
             access: HashMap::new(),
             refresh: HashMap::new(),
+            register,
         }
     }
 
